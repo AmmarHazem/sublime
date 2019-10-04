@@ -242,7 +242,7 @@ EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.Ema
 ADMIN_URL = r'^admin/'
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
 # ADMINS = [
-#     ("""Vitor Freitas""", 'vitor-freitas@example.com'),
+#     ("""ammar """, 'ammar-@example.com'),
 # ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 # MANAGERS = ADMINS

@@ -13,7 +13,7 @@ def update_site_forward(apps, schema_editor):
     Site.objects.update_or_create(
         id=settings.SITE_ID,
         defaults={
-            'domain': 'vitor@freitas.com trysublime.vitorfs.com',
+            'domain': 'ammar@.com trysublime.ammarfs.com',
             'name': 'sublime'
         }
     )
