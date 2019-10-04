@@ -1,0 +1,64 @@
+.chat-status {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.messages-list {
+  margin: 0;
+  padding: 0;
+  height: 50vh;
+  overflow-y: auto;
+}
+
+.video-call .messages-list{
+  height: 25vh;
+}
+
+.messages-list li {
+  list-style: none;
+  padding: .6em 0;
+}
+
+.messages-list li h5 {
+  margin: 0;
+  margin-bottom: .2em;
+}
+
+.messages-list li div {
+  margin-left: 10px;
+}
+
+.messages-list .picture {
+  border-radius: 5px;
+  float: left;
+}
+
+/* .chat-box {
+  position: fixed;
+  bottom: 0;
+  width: 43%;
+  background-color: white;
+} */
+
+#conversation .start-video-call
+{
+  margin-left: auto;
+  margin-bottom: 1rem;
+}
+
+video
+{
+  width: 100%;
+}
+#local_video{
+  position: absolute;
+  right: 0px;
+  bottom: 7px;
+  z-index: 1;
+  width: 20%;
+}
+#hangup-button{
+  position: absolute;
+  left: 8px;
+  bottom: 15px;
+}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% load thumbnail %}
+{% block title %}{% trans 'Messages' %}{% endblock %}
+
+{% block head %}
+<link href="{% static 'css/messager.css' %}" rel="stylesheet">
+{% endblock head %}
+
+{% block content %}
+<div class="push-down"></div>
+
+<div class="container">
+  <div class="page-header">
+    <h1>{{ request.user.get_profile_name|title }} {% trans 'Conversations' %}</h1>
+  </div>
+  <div class="row" style="margin-top: 1em">
+    <div class="col-md-3 list-group users-list">
+      {% for user in users_list %}
+      <a href="{% url 'messager:conversation_detail' user.username  %}"
+        class="list-group-item list-group-item-action {% if active == user.username %}active{% endif %}">
+        {% thumbnail user.picture "x30" as im %}
+        <img src="{{ im.url }}" alt="{% trans 'Picture Profile' %}">
+        {% empty %}
+        <img src="{% static 'img/user.png' %}" height="30px" alt="{% trans 'No Profile Picture' %}" />
+        {% endthumbnail %}
+        {{ user.get_profile_name|title }}
+      </a>
+      {% endfor %}
+    </div>
+    {% include "messager/includes/conversation.html" %}
+  </div>
+</div>
+
+{% endblock content %}
+
+{% block modal %}
+<script type="text/javascript">
+  var activeUser = "{{ active }}";
+  let scrollHeight = $('.messages-list')[0].scrollHeight;
+  window.onload = $('.messages-list').scrollTop(scrollHeight);
+</script>
+<script>
+  $(function () {
+
+    function setUserOnlineOffline(username, status) {
+      /* This function enables the client to switch the user connection
+      status, allowing to show if an user is connected or not.
+      */
+      var elem = $("online-stat-" + username);
+      if (elem) {
+        if (status === 'online') {
+          elem.attr("class", "btn btn-success btn-circle");
+        } else {
+          elem.attr("class", "btn btn-danger btn-circle");
+        };
+      };
+    };
+
+    function addNewMessage(message_id) {
+      /* This function calls the respective AJAX view, so it will be able to
+      load the received message in a proper way.
+      */
+      $.ajax({
+        url: '/messages/receive-message/',
+        data: { 'message_id': message_id },
+        cache: false,
+        success: function (data) {
+          $(".send-message").before(data);
+          scrollConversationScreen();
+        }
+      });
+    };
+
+    function scrollConversationScreen() {
+      /* Set focus on the input box from the form, and rolls to show the
+      the most recent message.
+      */
+      $("input[name='message']").focus();
+      $('.messages-list').scrollTop($('.messages-list')[0].scrollHeight);
+    }
+
+    $("#send").submit(function () {
+      $.ajax({
+        url: '/messages/send-message/',
+        data: $("#send").serialize(),
+        cache: false,
+        type: 'POST',
+        success: function (data) {
+          $(".send-message").before(data);
+          $("input[name='message']").val('');
+          scrollConversationScreen();
+        }
+      });
+      return false;
+    });
+
+    // WebSocket connection management block.
+    // Correctly decide between ws:// and wss://
+    let currentUser = '{{ request.user.username }}';
+    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + "/ws/" + currentUser + "/";
+    var webSocket = new channels.WebSocketBridge();
+    webSocket.connect(ws_path);
+
+    window.onbeforeunload = function () {
+      // Small function to run instruction just before closing the session.
+      payload = {
+        "type": "recieve",
+        "sender": currentUser,
+        "set_status": "offline"
+      };
+      webSocket.send(payload);
+    }
+
+    // Helpful debugging
+    webSocket.socket.onopen = function () {
+      // console.log("Connected to inbox stream");
+      // Commenting this block until I find a better way to manage how to
+      // report the user status.
+
+      /* payload = {
+          "type": "recieve",
+          "sender": currentUser,
+          "set_status": "online"
+      };
+      webSocket.send(payload); */
+    };
+
+    webSocket.socket.onclose = function () {
+      console.log("Disconnected from inbox stream");
+    };
+
+    // onmessage management.
+    webSocket.listen(function (event) {
+      switch (event.key) {
+        case "message":
+          if (event.sender === activeUser) {
+            addNewMessage(event.message_id);
+            // I hope there is a more elegant way to work this out.
+            setTimeout(function () { $("#unread-count").hide() }, 1);
+          } else {
+            $("#new-message-" + event.sender).show();
+          }
+          break;
+
+        case "set_status":
+          setUserOnlineOffline(event.sender, event.status);
+          break;
+
+        default:
+          console.log('error: ', event);
+          console.log(typeof (event))
+          break;
+      }
+    });
+  });
+</script>
+{% endblock modal %}

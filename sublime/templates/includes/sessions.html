@@ -1,0 +1,22 @@
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <a href="#" class="genric-btn link-border prev-day">
+            <i class="fa fa-chevron-left" aria-hidden="true"></i>
+        </a>
+        <h4>{{ date }}</h4>
+        <a href="#" class="genric-btn link-border next-day">
+            <i class="fa fa-chevron-right" aria-hidden="true"></i>
+        </a>
+    </div>
+    <div class="card-body">
+        {% for start, end in sessions %}
+        <div class="d-flex flex-row-reverse align-items-center justify-content-between my-2">
+            <p>{{ start }}</p> - 
+            <p>{{ end }}</p>
+            <a href="{% url 'session_reservation' %}?date={{ date }}&from={{ start }}&to={{ end }}" class="genric-btn info-border">
+                أحجز الان
+            </a>
+        </div>
+        {% endfor %}    
+    </div>
+</div>

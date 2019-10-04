@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block head %}
+    {{ form.media.css }}
+    <style>
+        video
+        {
+            width: 640px;
+            max-width: 100%;
+        }
+    </style>
+{% endblock head %}
+
+{% block content %}
+<div class="push-down"></div>
+
+<div id="header" class="container">
+    <div class="row pt-5 select-user">
+        <div class="col-md-6 col-10 mx-auto">
+            <form class="selectVideoCallUser" action="{% url 'messager:start-video-call' %}" method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ form }}
+                </div>
+                <button type="submit" class="btn btn-success">
+                    Call
+                    <i class="fa fa-volume-control-phone" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block modal %}
+    {{ form.media.js }}
+{% endblock modal %}

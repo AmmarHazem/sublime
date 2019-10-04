@@ -1,0 +1,102 @@
+{% load i18n thumbnail static %}
+
+<!-- Header Area Starts -->
+<header class="header-area">
+    <div class="header-top">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-9 d-md-flex">
+                    <h6 class="mr-3"><span class="mr-2"><i class="fa fa-mobile"></i></span> call us now! +1 305 708 2563
+                    </h6>
+                    <h6 class="mr-3"><span class="mr-2"><i class="fa fa-envelope-o"></i></span> medical@example.com</h6>
+                    <h6><span class="mr-2"><i class="fa fa-map-marker"></i></span> Find our Location</h6>
+                </div>
+                <div class="col-lg-3">
+                    <div class="social-links">
+                        <ul>
+                            <li><a href="#"><i class="fa fa-facebook"></i></a></li>
+                            <li><a href="#"><i class="fa fa-linkedin"></i></a></li>
+                            <li><a href="#"><i class="fa fa-twitter"></i></a></li>
+                            <li><a href="#"><i class="fa fa-instagram"></i></a></li>
+                            <li><a href="#"><i class="fa fa-vimeo"></i></a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="header">
+        <div class="container">
+            <div class="row align-items-center justify-content-between d-flex">
+                <div id="logo">
+                    <a href="{% url 'home' %}">
+                        <strong>sublime</strong>
+                    </a>
+                </div>
+                <nav id="nav-menu-container">
+                    <ul class="nav-menu">
+                        {% if request.user.is_authenticated %}
+                        <li>
+                            <a href="#" id="notifications" data-toggle="popover" data-title="{% trans 'Notifications' %}">
+                                <i class="fa fa-bell-o" aria-hidden="true"></i>
+                            </a>
+                        </li>
+                        <li><a href="{% url 'news:list' %}">News</a></li>
+                        <li><a href="{% url 'articles:list' %}">Blog</a></li>
+                        <li><a href="{% url 'qa:index_noans' %}">Q&A</a></li>
+                        <li><a href="{% url 'messager:messages_list' %}">Inbox</a></li>
+                        <li><a href="{% url 'users:list' %}">Contacts</a></li>
+                        <li>
+                            {% if not hide_search %}
+                            <form class="form-inline navbar-left" role="search" action="{% url 'search:results' %}">
+                                <div class="input-group align-items-stretch">
+                                    <input name="query" type="search" id="searchInput" class="single-input"
+                                        placeholder="{% trans 'Search' %}" aria-label="Search">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text px-2"><i class="fa fa-search" aria-hidden="true"></i></span>
+                                    </div>
+                                </div>
+                            </form>
+                            {% endif %}
+                        </li>
+                        <li class="menu-has-children">
+                            <a href="#">
+                                {% thumbnail request.user.picture "x30" as im %}
+                                <img src="{{ im.url }}" style="border-radius: 50%;" alt="{% trans 'User Image' %}"
+                                    class="user-image">
+                                {% empty %}
+                                <img src="{% static 'img/user.png' %}" height="30px" alt="{% trans 'No Profile Picture' %}" />
+                                {% endthumbnail %}
+                                {{ request.user.username }}
+                            </a>
+                            <ul>
+                                <li>
+                                    <a href="{% url 'users:detail' request.user.username  %}">
+                                        <i class="fa fa-cogs fa-fw" aria-hidden="true"></i>
+                                        &nbsp;
+                                        {% trans 'Profile Settings' %}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'account_logout' %}">
+                                        <i class="fa fa-sign-out fa-fw" aria-hidden="true"></i>
+                                        &nbsp; {% trans "Log Out" %}
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% else %}
+                        <li>
+                            <a href="{% url 'account_login' %}">Login</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'account_signup' %}">Signup</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</header>
+<!-- Header Area End -->

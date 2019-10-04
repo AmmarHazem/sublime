@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+{% load i18n static %}
+{% block head %}
+{{ form.media.css }}
+<link href="{% static 'css/messager.css' %}" rel="stylesheet">
+{% endblock head %}
+
+{% block content %}
+<div class="push-down"></div>
+
+<div class="container">
+  <div class="row pt-3 video-call">
+    <div class="col-md-8 col-sm-10 col-12 mx-auto px-0">
+      <h2>Video call with {{ active|capfirst }}</h2>
+    </div>
+    <div class="col-md-8 col-sm-10 col-12 px-0 mx-auto">
+      <video id="received_video" autoplay playsinline></video>
+      <video id="local_video" autoplay playsinline muted></video>
+      <button class="btn btn-danger" id="hangup-button" onclick="hangUpCall()" disabled>
+        Hang Up
+      </button>
+    </div>
+  </div>
+  <div class="row video-call">
+    {% include "messager/includes/conversation.html" %}
+  </div>
+</div>
+{% endblock content %}
+
+{% block modal %}
+{{ form.media.js }}
+
+<script>
+
+  var targetUser = '{{ calle }}';
+
+  var myHostname = window.location.hostname;
+  if (!myHostname) {
+    myHostname = "localhost";
+  }
+
+  var connection = null;
+  var clientID = 0;
+
+  var mediaConstraints = {
+    audio: true,
+    video: {
+      facingMode: 'user',
+      aspectRatio: {
+        ideal: 1.77777
+      }
+    }
+  };
+
+  var myUsername = window.location.pathname.slice(21, 26);
+  var targetUsername = targetUser;
+  var myPeerConnection = null;
+  var transceiver = null;
+  var webcamStream = null;
+
+  function log(text) {
+    var time = new Date();
+
+    console.log("[" + time.toLocaleTimeString() + "] " + text);
+  }
+
+  function log_error(text) {
+    var time = new Date();
+  }
+
+  function sendToServer(msg) {
+
+    connection.send(msg);
+  }
+
+  function connect() {
+
+    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + "/ws/video-call/";
+
+    connection = new channels.WebSocketBridge();
+    connection.connect(ws_path);
+
+    connection.onerror = function (evt) {
+      console.dir(evt);
+    }
+
+    connection.listen(function (evt) {
+      switch (evt.type) {
+
+        case "video_offer":
+          handleVideoOfferMsg(evt);
+          break;
+
+        case "video_answer":
+          handleVideoAnswerMsg(evt);
+          break;
+
+        case "new_ice_candidate":
+          handleNewICECandidateMsg(evt);
+          break;
+
+        case "hang_up":
+          handleHangUpMsg(evt);
+          break;
+
+        default:
+          log_error("Unknown message received:");
+          log_error(evt);
+      }
+    });
+  }
+
+  connect();
+
+  async function setLocalStream() {
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    }
+    catch (e) {
+      console.log('--- error getting user media ', e);
+      handleGetUserMediaError(e);
+    }
+    let localVideo = document.getElementById("local_video");
+    localVideo.srcObject = webcamStream;
+  }
+
+  async function createPeerConnection() {
+
+    myPeerConnection = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+      ]
+    });
+
+    myPeerConnection.onicecandidate = handleICECandidateEvent;
+    myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
+    myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
+    myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
+    myPeerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
+    myPeerConnection.ontrack = handleTrackEvent;
+  }
+
+  async function handleNegotiationNeededEvent() {
+
+    try {
+      const offer = await myPeerConnection.createOffer();
+
+
+      if (myPeerConnection.signalingState != "stable") {
+        log("     -- The connection isn't stable yet; postponing...")
+        return;
+      }
+
+      await myPeerConnection.setLocalDescription(offer);
+
+      sendToServer({
+        name: currentUser,
+        target: targetUsername,
+        type: "video_offer",
+        sdp: myPeerConnection.localDescription
+      });
+    } catch (err) {
+      log("*** The following error occurred while handling the negotiationneeded event:");
+      reportError(err);
+    };
+  }
+
+  function handleTrackEvent(event) {
+    document.getElementById("received_video").srcObject = event.streams[0];
+    document.getElementById("hangup-button").disabled = false;
+  }
+
+  function handleICECandidateEvent(event) {
+    if (event.candidate) {
+      sendToServer({
+        name: currentUser,
+        type: "new_ice_candidate",
+        target: targetUsername,
+        candidate: event.candidate
+      });
+    }
+  }
+
+  function handleICEConnectionStateChangeEvent(event) {
+    switch (myPeerConnection.iceConnectionState) {
+      case "closed":
+      case "failed":
+      case "disconnected":
+        closeVideoCall();
+        break;
+    }
+  }
+
+  function handleSignalingStateChangeEvent(event) {
+    switch (myPeerConnection.signalingState) {
+      case "closed":
+        closeVideoCall();
+        break;
+    }
+  }
+
+  function handleICEGatheringStateChangeEvent(event) { }
+
+  function closeVideoCall() {
+    var localVideo = document.getElementById("local_video");
+
+    var remoteVideo = document.getElementById("received_video");
+    var localVideo = document.getElementById("local_video");
+
+    if (myPeerConnection) {
+      myPeerConnection.ontrack = null;
+      myPeerConnection.onremovetrack = null;
+      myPeerConnection.onremovestream = null;
+      myPeerConnection.onicecandidate = null;
+      myPeerConnection.oniceconnectionstatechange = null;
+      myPeerConnection.onsignalingstatechange = null;
+      myPeerConnection.onicegatheringstatechange = null;
+      myPeerConnection.onnegotiationneeded = null;
+
+      if (remoteVideo.srcObject) {
+        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      if (localVideo.srcObject) {
+        localVideo.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      myPeerConnection.close();
+      myPeerConnection = null;
+    }
+
+    remoteVideo.removeAttribute("src");
+    remoteVideo.removeAttribute("srcObject");
+    localVideo.removeAttribute("src");
+    remoteVideo.removeAttribute("srcObject");
+
+    document.getElementById("hangup-button").disabled = true;
+    window.location.href = `/messages/${targetUsername}/`;
+  }
+
+  function handleHangUpMsg(msg) {
+    closeVideoCall();
+  }
+
+  function hangUpCall() {
+    closeVideoCall();
+
+    sendToServer({
+      name: myUsername,
+      target: targetUsername,
+      type: "hang_up"
+    });
+  }
+
+  async function invite(evt) {
+    if (myPeerConnection) {
+      alert("You can't start a call because you already have one open!");
+    } else {
+
+      targetUsername = targetUser;
+
+      createPeerConnection();
+
+      await setLocalStream();
+
+      try {
+        webcamStream.getTracks().forEach(
+          transceiver = track => myPeerConnection.addTransceiver(track, { streams: [webcamStream] })
+        );
+      } catch (err) {
+        console.log('--- get user media error ', err);
+        handleGetUserMediaError(err);
+      }
+    }
+  }
+
+  async function handleVideoOfferMsg(msg) {
+    targetUsername = msg.name;
+
+    if (!myPeerConnection) {
+      createPeerConnection();
+    }
+
+    var desc = new RTCSessionDescription(msg.sdp);
+
+    if (myPeerConnection.signalingState != "stable") {
+
+      await Promise.all([
+        myPeerConnection.setLocalDescription({ type: "rollback" }),
+        myPeerConnection.setRemoteDescription(desc)
+      ]);
+      return;
+    } else {
+      await myPeerConnection.setRemoteDescription(desc);
+    }
+
+    if (!webcamStream) {
+      await setLocalStream();
+
+      document.getElementById("local_video").srcObject = webcamStream;
+
+      try {
+        webcamStream.getTracks().forEach(
+          transceiver = track => myPeerConnection.addTransceiver(track, { streams: [webcamStream] })
+        );
+      } catch (err) {
+        handleGetUserMediaError(err);
+      }
+    }
+
+    await myPeerConnection.setLocalDescription(await myPeerConnection.createAnswer());
+
+    sendToServer({
+      name: myUsername,
+      target: targetUsername,
+      type: "video_answer",
+      sdp: myPeerConnection.localDescription
+    });
+  }
+
+  async function handleVideoAnswerMsg(msg) {
+
+    var desc = new RTCSessionDescription(msg.sdp);
+    await myPeerConnection.setRemoteDescription(desc).catch(reportError);
+  }
+
+  async function handleNewICECandidateMsg(msg) {
+    var candidate = new RTCIceCandidate(msg.candidate);
+
+    try {
+      await myPeerConnection.addIceCandidate(candidate)
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  function handleGetUserMediaError(e) {
+    log_error(e);
+    switch (e.name) {
+      case "NotFoundError":
+        alert("Unable to open your call because no camera and/or microphone" +
+          "were found.");
+        break;
+      case "SecurityError":
+      case "PermissionDeniedError":
+        break;
+      default:
+        alert("Error opening your camera and/or microphone: " + e.message);
+        break;
+    }
+
+    closeVideoCall();
+  }
+
+  function reportError(errMessage) {
+    log_error(`Error ${errMessage.name}: ${errMessage.message}`);
+  }
+
+  let caller = '{{ caller }}';
+
+  if (currentUser == caller) {
+    targetUsername = '{{ calle }}';
+    invite();
+  }
+
+</script>
+
+<script>
+  let activeUser = '{{ active }}';
+  $(function () {
+
+    function setUserOnlineOffline(username, status) {
+      /* This function enables the client to switch the user connection
+      status, allowing to show if an user is connected or not.
+      */
+      var elem = $("online-stat-" + username);
+      if (elem) {
+        if (status === 'online') {
+          elem.attr("class", "btn btn-success btn-circle");
+        } else {
+          elem.attr("class", "btn btn-danger btn-circle");
+        };
+      };
+    };
+
+    function addNewMessage(message_id) {
+      /* This function calls the respective AJAX view, so it will be able to
+      load the received message in a proper way.
+      */
+      $.ajax({
+        url: '/messages/receive-message/',
+        data: { 'message_id': message_id },
+        cache: false,
+        success: function (data) {
+          $(".send-message").before(data);
+          scrollConversationScreen();
+        }
+      });
+    };
+
+    function scrollConversationScreen() {
+      /* Set focus on the input box from the form, and rolls to show the
+      the most recent message.
+      */
+      $("input[name='message']").focus();
+      $('.messages-list').scrollTop($('.messages-list')[0].scrollHeight);
+    }
+
+    $("#send").submit(function () {
+      let data = $("#send").serialize();
+      $.ajax({
+        url: '/messages/send-message/',
+        data: data,
+        cache: false,
+        type: 'POST',
+        success: function (data) {
+          $(".send-message").before(data);
+          $("input[name='message']").val('');
+          scrollConversationScreen();
+        }
+      });
+      return false;
+    });
+
+    // WebSocket connection management block.
+    // Correctly decide between ws:// and wss://
+    let currentUser = '{{ request.user.username }}';
+    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + "/ws/" + currentUser + "/";
+    var webSocket = new channels.WebSocketBridge();
+    webSocket.connect(ws_path);
+
+    window.onbeforeunload = function () {
+      // Small function to run instruction just before closing the session.
+      payload = {
+        "type": "recieve",
+        "sender": currentUser,
+        "set_status": "offline"
+      };
+      webSocket.send(payload);
+    }
+
+    // Helpful debugging
+    webSocket.socket.onopen = function () {
+      // console.log("Connected to inbox stream");
+      // Commenting this block until I find a better way to manage how to
+      // report the user status.
+
+      /* payload = {
+          "type": "recieve",
+          "sender": currentUser,
+          "set_status": "online"
+      };
+      webSocket.send(payload); */
+    };
+
+    webSocket.socket.onclose = function () {
+      console.log("Disconnected from inbox stream");
+    };
+
+    // onmessage management.
+    webSocket.listen(function (event) {
+      switch (event.key) {
+        case "message":
+          if (event.sender === activeUser) {
+            addNewMessage(event.message_id);
+            // I hope there is a more elegant way to work this out.
+            setTimeout(function () { $("#unread-count").hide() }, 1);
+          } else {
+            $("#new-message-" + event.sender).show();
+          }
+          break;
+
+        case "set_status":
+          setUserOnlineOffline(event.sender, event.status);
+          break;
+
+        default:
+          console.log('error: ', event);
+          console.log(typeof (event))
+          break;
+      }
+    });
+    scrollConversationScreen();
+  });
+</script>
+{% endblock modal %}

@@ -1,0 +1,33 @@
+{% load i18n %}
+<div id="conversation" class="col-md-8 col-sm-10 col-12 mx-auto d-flex flex-column pt-3">
+    {% url 'messager:video-call-room' caller=caller calle=calle as video_call_room %}
+    {% if not request.path == video_call_room %}
+        <form class="start-video-call" method="POST" action="{% url 'messager:start-video-call' %}">
+    {% csrf_token %}
+    <input type="hidden" name="user" value="{{ active }}">
+    <button class="btn btn-success">
+        <i class="fa fa-video-camera" aria-hidden="true"></i>
+    </button>
+    </form>
+    {% endif %}
+    <div class="messages-list">
+    {% if message_list %}
+        {% for message in message_list reversed %}
+        {% include 'messager/single_message.html' with message=message %}
+        {% endfor %}
+    {% else %}
+        <h4>{% trans 'This is the begining of a great new conversation.' %}</h4>
+        <p>{% trans "Let's get started now!" %}</p>
+    {% endif %}
+    <li class="send-message"></li>
+    </div>
+    <div class="chat-box">
+    <form role="form" method="post" action="#" id="send">
+        <div class="form-group">
+        {% csrf_token %}
+        <input type="hidden" name="to" value="{{ active }}">
+        <input class="form-control" type="text" name="message" placeholder="{% trans 'Write a message...' %}" maxlength="1000" autocomplete="off">
+        </div>
+    </form>
+    </div>
+</div>

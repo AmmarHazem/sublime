@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+<style>
+  .select2 {
+    width: 100%;
+  }
+</style>
+<!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.12/summernote-bs4.css" rel="stylesheet"> -->
+{% endblock head %}
+
+{% block content %}
+<!-- Banner Area Starts -->
+<section class="banner-area other-page">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-12">
+        <h1>sublime</h1>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Banner Area End -->
+
+<!-- provider details -->
+<section class="provider-details section-padding">
+  <div class="container">
+    <div class="row flex-row-reverse">
+      <div class="col-md-5">
+        <div class="card">
+          <div class="row mx-0 flex-row-reverse pt-4 text-center">
+            <div class="col-md-5 pl-0">
+              <img src="{{ api_url }}{{ provider.avatar_src }}" alt="{{ provider.name }}" class="img-fluid">
+            </div>
+            <div class="col-md-7 pr-0 flex-column d-flex justify-content-center align-items-center">
+              <h3>{{ provider.name }}</h3>
+              <p>{{ provider.job|default:'' }}</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <h5 class="text-right px-1">الخدمات</h5>
+            <div class="blog_right_sidebar">
+              <div class="tag_cloud_widget">
+                <ul class="list hide">
+                  {% for service in provider.provider_price_list.items %}
+                  <li class="{% if forloop.counter > 10 %}more d-none{% endif %}">
+                    <a href="#">
+                      {{ service.name }}
+                    </a>
+                  </li>
+                  {% endfor %}
+                  <a href="#" class="toggle-services">المزيد</a>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <h4 class="mt-4 mt-md-0 text-right">اختار خدمة</h4>
+        <form action="" method="GET" class="select-service">
+          <select name="service" class="select2">
+            <option value="">-----------</option>
+            {% for service in provider.provider_price_list.items %}
+            <option value="{{ service.uuid }}">{{ service.name }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        <div class="sessions mt-4 text-right py-3">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- end provider details -->
+{% endblock content %}
+
+{% block modal %}
+<script>
+  // calendar scripts
+  // document.addEventListener('DOMContentLoaded', function () {
+  //   const calendarEl = document.getElementById('calendar');
+  //   let currentDate = new Date();
+  //   let currentMonth = `${currentDate.getMonth() + 1}`.length == 2 ? (currentDate.getMonth() + 1) : `0${currentDate.getMonth() + 1}`;
+  //   let currentDateStr = `${currentDate.getFullYear()}-${currentMonth}-${currentDate.getDate()}`;
+  //   let nextYearDate = `${currentDate.getFullYear() + 1}-${currentMonth}-${currentDate.getDate()}`;
+  //   let workStart = '{{ provider.schedules.0.start_time }}';
+  //   let workEnd = '{{ provider.schedules.0.end_time }}';
+  //   let workDays = '{{ provider.schedules.0.repeat_days }}'.split('').map(num => Number(num) - 1);
+  //   let offDays = [0, 1, 2, 3, 4, 5, 6].filter((num) => !workDays.includes(num));
+
+  //   const calendar = new FullCalendar.Calendar(calendarEl, {
+  //     plugins: ['interaction', 'dayGrid', 'timeGrid'],
+  //     header: {
+  //       left: 'prev,next today',
+  //       center: 'title',
+  //       right: 'dayGridMonth,timeGridWeek,timeGridDay'
+  //     },
+  //     navLinks: true,
+  //     selectable: true,
+  //     selectMirror: true,
+  //     select: function (arg) {
+  //       let { view, start } = arg;
+  //       if (workDays.includes(start.getDay())) {
+  //         if (view.type == 'dayGridMonth') {
+  //           calendar.changeView('timeGrid', arg.start);
+  //         }
+  //         else if (view.type == 'timeGrid') {
+  //           console.log('make a reservation ');
+  //           calendar.addEvent({
+  //             title: '',
+  //             start: arg.start,
+  //             end: arg.end,
+  //             allDay: arg.allDay
+  //           });
+  //         }
+  //       }
+  //     },
+  //     editable: true,
+  //     eventLimit: true,
+  //     validRange: {
+  //       start: currentDateStr,
+  //       end: nextYearDate,
+  //     },
+  //     events: [
+  //       {
+  //         title: 'My Event',
+  //         start: '2019-09-21T16:00:00',
+  //         editable: false,
+  //       },
+  //       {
+  //         daysOfWeek: offDays,
+  //         rendering: 'background',
+  //         color: '#d7d7d7',
+  //         editable: false,
+  //       },
+  //       {
+  //         daysOfWeek: workDays,
+  //         startTime: workStart,
+  //         endTime: workEnd,
+  //         rendering: 'background',
+  //         color: 'rgb(37, 126, 74)',
+  //         editable: false,
+  //       },
+  //     ]
+  //   });
+  //   calendar.render();
+
+  //   // calendar.addEvent({
+  //   //   title: 'Birthday',
+  //   //   start: '2019-09-26T16:00:00',
+  //   //   end: '2019-05-10T16:30:00',
+  //   //   editable: false,
+  //   // });
+  // });
+</script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.12/summernote-bs4.js"></script> -->
+<script>
+
+  let nextOrPrev = null;
+  $(document).ready(function () {
+    let provider = '{{ provider.uuid }}';
+    $('.select2').on('change', function (e) {
+      $('.sessions').fadeIn();
+      $(this).parent().submit();
+    });
+
+    $('.select-service').on('submit', function(e){
+      e.preventDefault();
+      let date = getDate();
+      let sessionsDev = $('.sessions');
+      sessionsDev.empty();
+      sessionsDev.append('<i class="fa fa-circle-o-notch fa-notch fa-spin fa-3x" aria-hidden="true"></i>');
+      let $this = $(this);
+      let dateStr = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+      let data = {
+        provider : provider,
+        item_id: $this.serializeArray()[0].value,
+        date: dateStr,
+      };
+      if(nextOrPrev == 'next'){
+        data['next'] = true;
+      }
+      else if(nextOrPrev == 'prev'){
+        data['prev'] = true;
+      }
+      let url = `/service-item/${data.provider}/`;
+
+      $.ajax({
+        url: url,
+        method: 'GET',
+        data: data,
+        success: function(res){
+          sessionsDev.empty();
+          sessionsDev.append(res);
+        },
+        error: function(err) {
+          console.log('error ', err);
+          sessionsDev.empty();
+        }
+      });
+    });
+
+    $('.sessions').on('click', '.card-header .next-day', function(e){
+      e.preventDefault();
+      // let url = 'service-item/f30ab94d-eb9f-4c09-b003-2e20445f80df/'
+      nextOrPrev = 'next';
+      $('.select-service').submit();
+    });
+
+    $('.sessions').on('click', '.card-header .prev-day', function(e){
+      e.preventDefault();
+      let date = getDate();
+      let selectedDate = `${date.getFullYear()}${date.getMonth()}${date.getDate()}`;
+      let currentDate = `${new Date().getFullYear()}${new Date().getMonth()}${new Date().getDate()}`;
+      if(selectedDate !== currentDate){
+        nextOrPrev = 'prev';
+        $('.select-service').submit();
+      }
+    });
+
+    function getDate(){
+      let dateStr = $('.card .card-header h4').text();
+      if(!dateStr){
+        return new Date();
+      }
+      dateNumbers = dateStr.split('-').map(str => Number(str));
+      let year = dateNumbers[2];
+      let month = dateNumbers[1] - 1;
+      let day = dateNumbers[0];
+      let date = new Date(year, month, day);
+      return date;
+    }
+
+    // $('#summernote').summernote({
+    //   placeholder: 'Bio',
+    // });
+  });
+</script>
+{% endblock modal %}
