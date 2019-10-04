@@ -200,6 +200,3 @@ RAVEN_CONFIG = {
     'CELERY_LOGLEVEL': env.int('SENTRY_LOG_LEVEL', logging.INFO),
     'DSN': SENTRY_DSN
 }
-
-# Your stuff...
-# ------------------------------------------------------------------------------
